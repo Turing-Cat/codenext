@@ -52,6 +52,14 @@ pub struct PastedImageInfo {
     pub encoded_format: EncodedImageFormat, // Always PNG for now.
 }
 
+// `arboard` can leave the CR from a `text/uri-list` CRLF line ending on a path.
+fn normalize_clipboard_path(path: PathBuf) -> PathBuf {
+    match path.to_str() {
+        Some(value) => PathBuf::from(value.trim_end_matches('\r')),
+        None => path,
+    }
+}
+
 /// Read the first clipboard image and encode it as a PNG attachment.
 #[cfg(not(target_os = "android"))]
 pub fn paste_image_as_png() -> Result<(Vec<u8>, PastedImageInfo), PasteImageError> {
@@ -82,7 +90,7 @@ fn read_clipboard_image(
     // A copied file takes precedence over its clipboard preview.
     let files = clipboard.get().file_list().unwrap_or_default();
     if let Some(image) = files.into_iter().find_map(|path| {
-        let reader = image::ImageReader::open(path).ok()?;
+        let reader = image::ImageReader::open(normalize_clipboard_path(path)).ok()?;
         crate::image_decode::decode_oriented(reader, image::Limits::default()).ok()
     }) {
         tracing::debug!(
@@ -554,6 +562,18 @@ mod pasted_paths_tests {
             pasted_image_format(Path::new(r"C:\\a\\b\\noext")),
             EncodedImageFormat::Other
         );
+    }
+
+    #[test]
+    fn opens_image_path_with_trailing_carriage_return() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let path = dir.path().join("clipboard.png");
+        image::RgbaImage::new(1, 1).save(&path).expect("write png");
+
+        let path_with_cr = PathBuf::from(format!("{}\r", path.display()));
+        let reader =
+            image::ImageReader::open(normalize_clipboard_path(path_with_cr)).expect("open png");
+        assert!(crate::image_decode::decode_oriented(reader, image::Limits::default()).is_ok());
     }
 
     #[cfg(target_os = "linux")]
