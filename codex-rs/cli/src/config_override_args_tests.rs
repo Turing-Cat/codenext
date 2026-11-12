@@ -35,3 +35,26 @@ fn preserves_scoped_overrides_and_forwarded_arguments() {
         ["program", "-c", "payload"],
     );
 }
+
+#[test]
+fn codenext_invocation_shows_codenext_in_usage() {
+    let error = try_parse_from(["codenext", "--help"]).expect_err("help should short-circuit");
+    assert_eq!(error.kind(), clap::error::ErrorKind::DisplayHelp);
+    let help = error.to_string();
+    assert!(
+        help.contains("Usage: codenext [OPTIONS] [PROMPT]"),
+        "{help}"
+    );
+    assert!(
+        help.contains("codenext [OPTIONS] <COMMAND> [ARGS]"),
+        "{help}"
+    );
+}
+
+#[test]
+fn codex_alias_keeps_codex_in_usage() {
+    let error = try_parse_from(["codex", "--help"]).expect_err("help should short-circuit");
+    assert_eq!(error.kind(), clap::error::ErrorKind::DisplayHelp);
+    let help = error.to_string();
+    assert!(help.contains("Usage: codex [OPTIONS] [PROMPT]"), "{help}");
+}

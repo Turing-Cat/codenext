@@ -15,7 +15,7 @@ help:
 # `codex`
 alias c := codex
 codex *args:
-    cargo run --bin codex -- {args}
+    cargo run --bin codenext -- {args}
 
 # `codex exec`
 exec *args:
